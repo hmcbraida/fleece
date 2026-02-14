@@ -46,7 +46,7 @@ struct TokenNode {
   At present, this can only deal with ASCII JSON, and will raise errors if the
   provided document is not valid ASCII.
 */
-std::vector<TokenNode> lex_bytes(const char* in_bytes, size_t in_bytes_len);
+std::vector<TokenNode> lex_bytes(const char* in_bytes);
 
 class LexingException : public std::exception {
   virtual const char* what() const throw();

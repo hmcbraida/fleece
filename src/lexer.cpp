@@ -27,13 +27,16 @@ TokenNode char_token(char c) {
     continue;                                                                  \
   }
 
-std::vector<TokenNode> lex_bytes(const char in_bytes[], size_t in_bytes_len) {
+std::vector<TokenNode> lex_bytes(const char in_bytes[]) {
   std::vector<TokenNode> result = {};
 
   // TODO: Support '\' escaping
 
-  for (size_t idx = 0; idx < in_bytes_len; idx++) {
+  for (size_t idx = 0; ; idx++) {
     const char c = in_bytes[idx];
+    if (c == '\0') {
+      break;
+    }
 
     // Check if this is whitespace
     if (c == ' ' || c == '\n' || c == '\t') {

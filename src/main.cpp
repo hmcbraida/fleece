@@ -3,69 +3,24 @@
 #include "parser.hpp"
 #include <cstdio>
 
-void simple_string_test() {
-  const char example[] = "\"hello wor{ld\"";
-  // const char example[] = "{\"message\": \"hello world\"}";
-
-  auto tokens = lex_bytes(example, sizeof(example) / sizeof(char));
-
+void json_test(const char* text) {
+  printf("Input text:\n%s\n", text);
+  auto tokens = lex_bytes(text);
+  printf("Result of lexing:\n");
   print_lex_output(tokens);
-
   ParsedNode* res = parse_tokens(tokens);
-
+  printf("Result of parsing:\n");
   print_parsed_node(res);
-  printf("\n");
-
-  delete res;
-}
-
-void simple_array_test() {
-  const char example[] =
-      "[\"hello wor{ld\", \"another element\", [\"subarray\"]]";
-  // const char example[] = "{\"message\": \"hello world\"}";
-
-  auto tokens = lex_bytes(example, sizeof(example) / sizeof(char));
-
-  print_lex_output(tokens);
-
-  ParsedNode* res = parse_tokens(tokens);
-
-  print_parsed_node(res);
-  printf("\n");
-
-  delete res;
-}
-
-void simple_object_test() {
-  const char example[] =
-      "{\"hello\": \"world\", \"another\": \"pair\", \"this "
-      "time\": [\"two\", \"things\", {\"and\": \"this ;)\"}]}";
-  // const char example[] = "{\"message\": \"hello world\"}";
-  printf("%s\n", example);
-
-  auto tokens = lex_bytes(example, sizeof(example) / sizeof(char));
-
-  print_lex_output(tokens);
-
-  ParsedNode* res = parse_tokens(tokens);
-
-  print_parsed_node(res);
-  printf("\n");
-
-  // if (res->t != ParsedNodeType::OBJECT) {
-  //   throw "Expected object at top level";
-  // }
-
-  // printf("%zu\n", res->inner.o.children.size());
-
+  printf("\n\n");
   delete res;
 }
 
 int main() {
   try {
-    simple_string_test();
-    simple_array_test();
-    simple_object_test();
+    json_test("\"hello { world }\"");
+    json_test("[\"hello wor{ld\", \"another element\", [\"subarray\"]]");
+    json_test("{\"hello\": \"world\", \"another\": \"pair\", \"this time\": "
+              "[\"two\", \"things\", {\"and\": \"this ;)\"}]}");
   } catch (char const* c) {
     printf("%s\n", c);
   }
