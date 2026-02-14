@@ -6,6 +6,8 @@
 #include <string>
 #include <vector>
 
+struct ParsedNode;
+
 struct ParsedStringNode {
   std::string val;
 
@@ -13,15 +15,23 @@ struct ParsedStringNode {
   ~ParsedStringNode() {}
 };
 
+struct ParsedArrayNode {
+  std::vector<ParsedNode*> children;
+
+  ~ParsedArrayNode();
+};
+
 union ParsedNodeInner {
   ParsedStringNode s;
+  ParsedArrayNode a;
 
   // destruction handled by tagged union `ParsedNode`
   ~ParsedNodeInner() {}
 };
 
 enum ParsedNodeType {
-  STRING
+  STRING,
+  ARRAY,
 };
 
 struct ParsedNode {
@@ -35,7 +45,7 @@ struct ParsedTree {
   ParsedNode root;
 };
 
-ParsedNode* parse_tokens(std::vector<TokenNode> tokens);
-ParsedNode* parse_tokens(std::vector<TokenNode> tokens, size_t start, size_t end, size_t* process_end);
+ParsedNode* parse_tokens(TokenSequence tokens);
+ParsedNode* parse_tokens(TokenSequence tokens, size_t start, size_t end, size_t* process_end);
 
 #endif

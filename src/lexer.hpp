@@ -2,7 +2,7 @@
 
 #define FLEECE_LEXER_H_
 
-#include<exception>
+#include <exception>
 #include <vector>
 
 /*
@@ -48,9 +48,10 @@ struct TokenNode {
 */
 std::vector<TokenNode> lex_bytes(const char* in_bytes, size_t in_bytes_len);
 
-
 class LexingException : public std::exception {
   virtual const char* what() const throw();
 };
+
+typedef std::vector<TokenNode>& TokenSequence;
 
 #endif

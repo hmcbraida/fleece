@@ -1,9 +1,27 @@
 #include "parser.hpp"
 #include "lexer.hpp"
+#include <cstdio>
 #include <string>
 #include <vector>
 
-typedef std::vector<TokenNode> Tokens;
+/*
+  Return a boolean expression based on whether the TokenNode is the given type.
+*/
+#define SIMPLE_EQ(token, token_id)                                             \
+  (token.t == TokenType::Simple) && (token.inner.s == SimpleToken::token_id)
+
+#define SIMPLE_LOOKAHEAD(var_name, token_id)                                   \
+  size_t var_name = 0;                                                         \
+  for (size_t lookahead_idx = start + 1; lookahead_idx < end;                  \
+       lookahead_idx++) {                                                      \
+    if (SIMPLE_EQ(tokens[lookahead_idx], token_id)) {                          \
+      var_name = lookahead_idx;                                                \
+      break;                                                                   \
+    }                                                                          \
+  }                                                                            \
+  if (var_name == 0) {                                                         \
+    throw "No matching " #token_id;                                            \
+  }
 
 char simple_token_to_char(const SimpleToken& token) {
   using enum SimpleToken;
@@ -25,7 +43,7 @@ char simple_token_to_char(const SimpleToken& token) {
   }
 }
 
-ParsedNode* parse_string(Tokens tokens, size_t start, size_t end) {
+ParsedNode* parse_string(TokenSequence tokens, size_t start, size_t end) {
   std::string result;
   result.reserve(end - start);
 
@@ -43,17 +61,37 @@ ParsedNode* parse_string(Tokens tokens, size_t start, size_t end) {
                         .inner = {{.val = result}}};
 }
 
-ParsedNode* parse_array(Tokens tokens, size_t start, size_t end) {
-  // WIP!
-  std::vector<ParsedNode*> children;
+ParsedNode* parse_array(TokenSequence tokens, size_t start, size_t end) {
+  ParsedNode* result = new ParsedNode{
+      .t = ParsedNodeType::ARRAY,
+      .inner = ParsedNodeInner{
+          .a = ParsedArrayNode{.children = std::vector<ParsedNode*>()}}};
 
-  size_t next_child_start = 0;
+  size_t next_child_start = start;
   while (1) {
-    
+    size_t child_end;
+
+    auto child = parse_tokens(tokens, next_child_start, end, &child_end);
+
+    result->inner.a.children.push_back(child);
+
+    // End of the list of children
+    if (child_end == end) {
+      break;
+    }
+
+    // We're not at the end, so there better be a comma now...
+    if (!SIMPLE_EQ(tokens[child_end], COMMA)) {
+      throw "Expected comma splitting array children";
+    }
+
+    next_child_start = child_end + 1;
   }
+
+  return result;
 }
 
-ParsedNode* parse_tokens(Tokens tokens) {
+ParsedNode* parse_tokens(TokenSequence tokens) {
   size_t process_end;
   auto result = parse_tokens(tokens, 0, tokens.size(), &process_end);
 
@@ -65,18 +103,12 @@ ParsedNode* parse_tokens(Tokens tokens) {
 }
 
 /*
-  Return a boolean expression based on whether the TokenNode is the given type.
-*/
-#define SIMPLE_EQ(token, token_id)                                             \
-  (token.t == TokenType::Simple) && (token.inner.s == SimpleToken::token_id)
-
-/*
   Process a sequence of tokens until it picks out an entity.
 
   Anything after the first atomic node found will be ignored, and `process_end`
   will be written with the end of what was processed.
 */
-ParsedNode* parse_tokens(Tokens tokens, size_t start, size_t end,
+ParsedNode* parse_tokens(TokenSequence tokens, size_t start, size_t end,
                          size_t* process_end) {
   const TokenNode& first_token = tokens[start];
   const TokenNode& last_token = tokens[end - 1];
@@ -92,15 +124,9 @@ ParsedNode* parse_tokens(Tokens tokens, size_t start, size_t end,
   // Check for string
   if (SIMPLE_EQ(first_token, QUOTE)) {
     // Look ahead for the next quotation mark
-    size_t next_quote = 0;
-    for (size_t lookahead_idx = 1; lookahead_idx < end; lookahead_idx++) {
-      if (SIMPLE_EQ(tokens[lookahead_idx], QUOTE)) {
-        next_quote = lookahead_idx;
-      }
-    }
-    if (next_quote == 0) {
-      throw "No matching quote";
-    }
+    SIMPLE_LOOKAHEAD(next_quote, QUOTE)
+
+    // printf("%zu,%zu\n", start + 1, next_quote);
 
     // start is the position of the first quote
     // next_quote is the position of its pair
@@ -110,17 +136,26 @@ ParsedNode* parse_tokens(Tokens tokens, size_t start, size_t end,
     return string_node;
   }
 
-  if (first_token.inner.s == SimpleToken::LSQUAREB) {
-    if (last_token.inner.s != SimpleToken::RSQUAREB) {
-      throw "Invalid token (5)";
-    }
+  if (SIMPLE_EQ(first_token, LSQUAREB)) {
+    SIMPLE_LOOKAHEAD(next_sqbrack, RSQUAREB)
+
+    ParsedNode* array_node = parse_array(tokens, start + 1, next_sqbrack);
+    *process_end = next_sqbrack + 1;
+
+    return array_node;
   }
 
-  throw "Invalid token (4)";
+  throw "Unexpected end of input";
 }
 
 ParsedNode::~ParsedNode() {
   if (t == ParsedNodeType::STRING) {
     inner.s.val.~basic_string();
+  }
+}
+
+ParsedArrayNode::~ParsedArrayNode() {
+  for (auto child : children) {
+    delete child;
   }
 }
