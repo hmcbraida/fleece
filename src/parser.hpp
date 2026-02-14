@@ -36,6 +36,6 @@ struct ParsedTree {
 };
 
 ParsedNode* parse_tokens(std::vector<TokenNode> tokens);
-ParsedNode* parse_tokens(std::vector<TokenNode> tokens, size_t start, size_t end);
+ParsedNode* parse_tokens(std::vector<TokenNode> tokens, size_t start, size_t end, size_t* process_end);
 
 #endif
