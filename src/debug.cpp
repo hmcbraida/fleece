@@ -67,5 +67,7 @@ void print_parsed_node(const ParsedNode* node) {
       print_parsed_node(child);
     }
     printf("}");
+  } else if (node->t == ParsedNodeType::NUMBER) {
+    printf("%g", node->inner.n.val);
   }
 }

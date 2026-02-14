@@ -1,6 +1,8 @@
 #include "parser.hpp"
 #include "lexer.hpp"
+#include <cmath>
 #include <cstdio>
+#include <math.h>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -9,7 +11,10 @@
   Return a boolean expression based on whether the TokenNode is the given type.
 */
 #define SIMPLE_EQ(token, token_id)                                             \
-  (token.t == TokenType::Simple) && (token.inner.s == SimpleToken::token_id)
+  ((token.t == TokenType::Simple) && (token.inner.s == SimpleToken::token_id))
+
+#define CHAR_EQ(token, char)                                                   \
+  ((token.t == TokenType::Char) && (token.inner.c == char))
 
 #define IS_WHITESPACE(token)                                                   \
   (token.t == TokenType::Char &&                                               \
@@ -150,6 +155,104 @@ ParsedNode* parse_object(TokenSequence tokens, size_t start, size_t end,
   }
 }
 
+/*
+  Convert a token to a digit 0-10, or -1 if not a number.
+*/
+short convert_token_int(TokenNode& t) {
+  if (t.t == TokenType::Simple) {
+    return -1;
+  }
+
+  // t.t == TokenType::Char
+  char c = t.inner.c;
+
+  switch (c) {
+  case '0':
+    return 0;
+  case '1':
+    return 1;
+  case '2':
+    return 2;
+  case '3':
+    return 3;
+  case '4':
+    return 4;
+  case '5':
+    return 5;
+  case '6':
+    return 6;
+  case '7':
+    return 7;
+  case '8':
+    return 8;
+  case '9':
+    return 9;
+  }
+
+  return -1;
+}
+
+/*
+  Attempt to parse the tokens in the range.
+
+  If this can be considered a number, then return a ParsedNode representing it;
+  and update `process_end`.
+*/
+ParsedNode* parse_number(TokenSequence tokens, size_t start, size_t end,
+                         size_t* process_end) {
+  // this represents the largest major digit
+  short exponent = -1;
+  // list of digits in the number
+  std::vector<short> digits = {};
+  // flag that determines if we have passed the decimal point
+  bool passed_decimal = false;
+  // we use idx to loop over the tokens
+  size_t idx = start;
+  for (; idx < end; idx++) {
+    TokenNode& t = tokens[idx];
+
+    // if we're still in the integer portion, we allow a . to move use into the
+    // fractional portion
+    if (!passed_decimal && CHAR_EQ(tokens[idx], '.')) {
+      passed_decimal = true;
+      continue;
+    }
+
+    short val = convert_token_int(t);
+    // non-numeric means we stop processing as a number.
+    if (val == -1) {
+      break;
+    }
+
+    digits.push_back(val);
+    // Mark an increase in the whole digit count
+    if (!passed_decimal) {
+      exponent++;
+    }
+  }
+
+  // If this wasn't a number, return a nullptr to mark no number processed.
+  if (digits.size() == 0) {
+    return nullptr;
+  }
+
+  // add up the digits
+  double result = 0.0;
+  for (auto& d : digits) {
+    double val = pow(10.0f, exponent) * d;
+    result += val;
+    exponent--;
+  }
+
+  // strip any whitespace
+  for (; IS_WHITESPACE(tokens[idx]); idx++) {}
+  *process_end = idx;
+
+  return new ParsedNode{
+      .t = ParsedNodeType::NUMBER,
+      .inner = ParsedNodeInner{.n = ParsedNumericNode{.val = result}}};
+}
+
 ParsedNode* parse_tokens(TokenSequence tokens) {
   size_t process_end;
   auto result = parse_tokens(tokens, 0, tokens.size(), &process_end);
@@ -174,14 +277,11 @@ ParsedNode* parse_tokens(TokenSequence tokens, size_t start, size_t end,
   }
 
   const TokenNode& first_token = tokens[start];
-  const TokenNode& last_token = tokens[end - 1];
 
-  if (first_token.t != TokenType::Simple) {
-    throw "Invalid token (1)";
-  }
-
-  if (last_token.t != TokenType::Simple) {
-    throw "Invalid token (2)";
+  // Check for number
+  ParsedNode* numeric = parse_number(tokens, start, end, process_end);
+  if (numeric != nullptr) {
+    return numeric;
   }
 
   // Check for string
@@ -193,7 +293,9 @@ ParsedNode* parse_tokens(TokenSequence tokens, size_t start, size_t end,
   // Check for object
   PROCESS_INSIDE(LCURLYB, parse_object)
 
-  throw "Unexpected end of input";
+  printf("%c", first_token.inner.c);
+
+  throw "Unexpected token";
 }
 
 /*

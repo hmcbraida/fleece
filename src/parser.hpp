@@ -28,10 +28,15 @@ struct ParsedObjectNode {
   ~ParsedObjectNode();
 };
 
+struct ParsedNumericNode {
+  double val;
+};
+
 union ParsedNodeInner {
   ParsedStringNode s;
   ParsedArrayNode a;
   ParsedObjectNode o;
+  ParsedNumericNode n;
 
   // destruction handled by tagged union `ParsedNode`
   ~ParsedNodeInner() {}
@@ -41,6 +46,7 @@ enum ParsedNodeType {
   STRING,
   ARRAY,
   OBJECT,
+  NUMBER,
 };
 
 struct ParsedNode {

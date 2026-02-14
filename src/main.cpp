@@ -21,6 +21,7 @@ int main() {
     json_test("[\"hello wor{ld\", \"another element\", [\"subarray\"]]");
     json_test("{\"hello\":\n \"world\",      \n \"another\": \"pair\", \"this time\": "
               "[\"two\", \"things\", {\"and\": \"this ;)\"}]}");
+    json_test("[12, 34, 2432.23, 0.3, .532, \"hello\"]");
   } catch (char const* c) {
     printf("%s\n", c);
   }
