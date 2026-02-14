@@ -11,6 +11,9 @@
 #define SIMPLE_EQ(token, token_id)                                             \
   (token.t == TokenType::Simple) && (token.inner.s == SimpleToken::token_id)
 
+#define IS_WHITESPACE(token)                                                   \
+  (token.t == TokenType::Char &&                                               \
+   (token.inner.c == ' ' || token.inner.c == '\n' || token.inner.c == '\t'))
 
 /*
   Checks for a pair starting with initial, ending with final; parse inside.
@@ -20,6 +23,9 @@
 #define PROCESS_INSIDE(initial, parse_fn)                                      \
   if (SIMPLE_EQ(first_token, initial)) {                                       \
     ParsedNode* array_node = parse_fn(tokens, start + 1, end, process_end);    \
+    while ((*process_end < end) && IS_WHITESPACE(tokens[*process_end])) {      \
+      (*process_end)++;                                                        \
+    }                                                                          \
     return array_node;                                                         \
   }
 
@@ -163,6 +169,10 @@ ParsedNode* parse_tokens(TokenSequence tokens) {
 */
 ParsedNode* parse_tokens(TokenSequence tokens, size_t start, size_t end,
                          size_t* process_end) {
+  while (IS_WHITESPACE(tokens[start])) {
+    start++;
+  }
+
   const TokenNode& first_token = tokens[start];
   const TokenNode& last_token = tokens[end - 1];
 
@@ -175,11 +185,7 @@ ParsedNode* parse_tokens(TokenSequence tokens, size_t start, size_t end,
   }
 
   // Check for string
-  if ((first_token.t == TokenType ::Simple) &&
-      (first_token.inner.s == SimpleToken ::QUOTE)) {
-    ParsedNode* array_node = parse_string(tokens, start + 1, end, process_end);
-    return array_node;
-  }
+  PROCESS_INSIDE(QUOTE, parse_string)
 
   // Check for array
   PROCESS_INSIDE(LSQUAREB, parse_array)

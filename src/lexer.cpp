@@ -38,11 +38,6 @@ std::vector<TokenNode> lex_bytes(const char in_bytes[]) {
       break;
     }
 
-    // Check if this is whitespace
-    if (c == ' ' || c == '\n' || c == '\t') {
-      continue; // not interested
-    }
-
     // Special control character
     LCSIMPLE('{', LCURLYB)
     LCSIMPLE('}', RCURLYB)
@@ -56,11 +51,11 @@ std::vector<TokenNode> lex_bytes(const char in_bytes[]) {
       break;
     }
 
-    // unknown character
-    // ' ' and '~' are the boundaries of printable characters
-    if (c < ' ' || c > '~') {
-      throw new LexingException();
-    }
+    // // unknown character
+    // // ' ' and '~' are the boundaries of printable characters
+    // if (c < ' ' || c > '~') {
+    //   throw new LexingException();
+    // }
 
     // Standard character
     result.push_back(char_token(c));

@@ -19,7 +19,7 @@ int main() {
   try {
     json_test("\"hello { world }\"");
     json_test("[\"hello wor{ld\", \"another element\", [\"subarray\"]]");
-    json_test("{\"hello\": \"world\", \"another\": \"pair\", \"this time\": "
+    json_test("{\"hello\":\n \"world\",      \n \"another\": \"pair\", \"this time\": "
               "[\"two\", \"things\", {\"and\": \"this ;)\"}]}");
   } catch (char const* c) {
     printf("%s\n", c);
