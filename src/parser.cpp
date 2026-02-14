@@ -2,6 +2,7 @@
 #include "lexer.hpp"
 #include <cstdio>
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 /*
@@ -40,21 +41,20 @@
   }
 
 char simple_token_to_char(const SimpleToken& token) {
-  using enum SimpleToken;
   switch (token) {
-  case LCURLYB:
+  case SimpleToken::LCURLYB:
     return '{';
-  case RCURLYB:
+  case SimpleToken::RCURLYB:
     return '}';
-  case LSQUAREB:
+  case SimpleToken::LSQUAREB:
     return '[';
-  case RSQUAREB:
+  case SimpleToken::RSQUAREB:
     return ']';
-  case COLON:
+  case SimpleToken::COLON:
     return ':';
-  case COMMA:
+  case SimpleToken::COMMA:
     return ',';
-  case QUOTE:
+  case SimpleToken::QUOTE:
     return '"';
   }
 }
@@ -107,6 +107,49 @@ ParsedNode* parse_array(TokenSequence tokens, size_t start, size_t end) {
   return result;
 }
 
+ParsedNode* parse_object(TokenSequence tokens, size_t start, size_t end) {
+  ParsedNode* result = new ParsedNode{
+      .t = ParsedNodeType::OBJECT,
+      .inner = ParsedNodeInner{
+          .o = ParsedObjectNode{
+              .children = std::unordered_map<std::string, ParsedNode*>()}}};
+
+  size_t next_pair_start = start;
+  while (1) {
+    size_t key_end;
+    // bit icky contructing then deconstructing a node for this...
+    ParsedNode* key_node = parse_tokens(tokens, next_pair_start, end, &key_end);
+    if (key_node->t != ParsedNodeType::STRING) {
+      throw "Expected string as object key";
+    }
+    std::string str_key = key_node->inner.s.val;
+    // we have the key, time to dispose.
+    delete key_node;
+
+    // we expect a colon here to separate the key from the value.
+    if (!SIMPLE_EQ(tokens[key_end], COLON)) {
+      throw "Expected colon separating key and value";
+    }
+
+    size_t val_end;
+    ParsedNode* val_node = parse_tokens(tokens, key_end + 1, end, &val_end);
+    result->inner.o.children.insert({str_key, val_node});
+
+    if (val_end == end) {
+      break;
+    }
+
+    // we expect a comma here to separate from the next key-val pair.
+    if (!SIMPLE_EQ(tokens[val_end], COMMA)) {
+      throw "Expected comma separating key value pairs";
+    }
+
+    next_pair_start = val_end + 1;
+  }
+
+  return result;
+}
+
 ParsedNode* parse_tokens(TokenSequence tokens) {
   size_t process_end;
   auto result = parse_tokens(tokens, 0, tokens.size(), &process_end);
@@ -143,6 +186,8 @@ ParsedNode* parse_tokens(TokenSequence tokens, size_t start, size_t end,
   // Check for array
   PROCESS_INSIDE(LSQUAREB, RSQUAREB, parse_array)
 
+  PROCESS_INSIDE(LCURLYB, RCURLYB, parse_object)
+
   throw "Unexpected end of input";
 }
 
@@ -155,5 +200,11 @@ ParsedNode::~ParsedNode() {
 ParsedArrayNode::~ParsedArrayNode() {
   for (auto child : children) {
     delete child;
+  }
+}
+
+ParsedObjectNode::~ParsedObjectNode() {
+  for (const auto& [key, value] : children) {
+    delete value;
   }
 }

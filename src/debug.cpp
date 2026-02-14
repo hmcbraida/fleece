@@ -1,15 +1,15 @@
 #include "lexer.hpp"
+#include "parser.hpp"
 #include <cstdio>
 #include <vector>
 
 #define SIMPLETOKENCASE(token_id)                                              \
-  case token_id:                                                               \
+  case SimpleToken::token_id:                                                               \
     result = #token_id;                                                        \
     break;
 
 const char* simple_token_str(SimpleToken token) {
   const char* result;
-  using enum SimpleToken;
   switch (token) {
     SIMPLETOKENCASE(LCURLYB)
     SIMPLETOKENCASE(RCURLYB)
@@ -34,6 +34,38 @@ void print_lex_output(std::vector<TokenNode>& tokens) {
       break;
     }
 
-    printf("\n");
+    printf(",");
+  }
+  printf("\n");
+}
+
+void print_parsed_node(const ParsedNode* node) {
+  if (node->t == ParsedNodeType::STRING) {
+    printf("\"%s\"", node->inner.s.val.c_str());
+  } else if (node ->t == ParsedNodeType::ARRAY) {
+    printf("[");
+    short initial = 1;
+    for (const ParsedNode* child : node->inner.a.children) {
+      if (!initial) {
+        printf(",");
+      } else {
+        initial = 0;
+      }
+      print_parsed_node(child);
+    }
+    printf("]");
+  } else if (node->t == ParsedNodeType::OBJECT) {
+    printf("{");
+    short initial = 1;
+    for (const auto& [key, child] : node->inner.o.children) {
+      if (!initial) {
+        printf(",");
+      } else {
+        initial = 0;
+      }
+      printf("\"%s\":", key.c_str());
+      print_parsed_node(child);
+    }
+    printf("}");
   }
 }

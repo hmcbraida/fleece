@@ -4,6 +4,7 @@
 
 #include "lexer.hpp"
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 struct ParsedNode;
@@ -21,9 +22,16 @@ struct ParsedArrayNode {
   ~ParsedArrayNode();
 };
 
+struct ParsedObjectNode {
+  std::unordered_map<std::string, ParsedNode*> children;
+
+  ~ParsedObjectNode();
+};
+
 union ParsedNodeInner {
   ParsedStringNode s;
   ParsedArrayNode a;
+  ParsedObjectNode o;
 
   // destruction handled by tagged union `ParsedNode`
   ~ParsedNodeInner() {}
@@ -32,6 +40,7 @@ union ParsedNodeInner {
 enum ParsedNodeType {
   STRING,
   ARRAY,
+  OBJECT,
 };
 
 struct ParsedNode {
