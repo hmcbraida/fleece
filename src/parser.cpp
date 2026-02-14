@@ -11,32 +11,15 @@
 #define SIMPLE_EQ(token, token_id)                                             \
   (token.t == TokenType::Simple) && (token.inner.s == SimpleToken::token_id)
 
-#define SIMPLE_LOOKAHEAD(var_name, token_id)                                   \
-  size_t var_name = 0;                                                         \
-  for (size_t lookahead_idx = start + 1; lookahead_idx < end;                  \
-       lookahead_idx++) {                                                      \
-    if (SIMPLE_EQ(tokens[lookahead_idx], token_id)) {                          \
-      var_name = lookahead_idx;                                                \
-      break;                                                                   \
-    }                                                                          \
-  }                                                                            \
-  if (var_name == 0) {                                                         \
-    throw "No matching " #token_id;                                            \
-  }
 
 /*
   Checks for a pair starting with initial, ending with final; parse inside.
 
   The `parse_fn` is run on whatever tokens lie on the inside.
 */
-#define PROCESS_INSIDE(initial, final, parse_fn)                               \
+#define PROCESS_INSIDE(initial, parse_fn)                                      \
   if (SIMPLE_EQ(first_token, initial)) {                                       \
-    SIMPLE_LOOKAHEAD(final_pos, final)                                         \
-    if (final_pos == 0) {                                                      \
-      throw "Missing " #final " to match " #initial;                           \
-    }                                                                          \
-    ParsedNode* array_node = parse_fn(tokens, start + 1, final_pos);           \
-    *process_end = final_pos + 1;                                              \
+    ParsedNode* array_node = parse_fn(tokens, start + 1, end, process_end);    \
     return array_node;                                                         \
   }
 
@@ -59,25 +42,35 @@ char simple_token_to_char(const SimpleToken& token) {
   }
 }
 
-ParsedNode* parse_string(TokenSequence tokens, size_t start, size_t end) {
-  std::string result;
-  result.reserve(end - start);
+ParsedNode* parse_string(TokenSequence tokens, size_t start, size_t end,
+                         size_t* process_end) {
+  // std::string result;
+  ParsedNode* result = new ParsedNode{
+      .t = ParsedNodeType::STRING,
+      .inner = ParsedNodeInner{.s = ParsedStringNode{.val = std::string("")}}};
+  result->inner.s.val.reserve(end - start);
+  // result.reserve(end - start);
 
   for (size_t idx = start; idx < end; idx++) {
     const TokenNode& token = tokens[idx];
 
+    if (SIMPLE_EQ(token, QUOTE)) {
+      *process_end = idx + 1;
+      return result;
+    }
+
     if (token.t == TokenType::Simple) {
-      result += simple_token_to_char(token.inner.s);
+      result->inner.s.val += simple_token_to_char(token.inner.s);
     } else {
-      result += token.inner.c;
+      result->inner.s.val += token.inner.c;
     }
   }
 
-  return new ParsedNode{.t = ParsedNodeType::STRING,
-                        .inner = {{.val = result}}};
+  throw "Unexpected end of string";
 }
 
-ParsedNode* parse_array(TokenSequence tokens, size_t start, size_t end) {
+ParsedNode* parse_array(TokenSequence tokens, size_t start, size_t end,
+                        size_t* process_end) {
   ParsedNode* result = new ParsedNode{
       .t = ParsedNodeType::ARRAY,
       .inner = ParsedNodeInner{
@@ -91,9 +84,11 @@ ParsedNode* parse_array(TokenSequence tokens, size_t start, size_t end) {
 
     result->inner.a.children.push_back(child);
 
-    // End of the list of children
-    if (child_end == end) {
-      break;
+    // End of the list of children if we meet a closing brace
+    if (SIMPLE_EQ(tokens[child_end], RSQUAREB)) {
+      *process_end = child_end + 1;
+
+      return result;
     }
 
     // We're not at the end, so there better be a comma now...
@@ -103,11 +98,10 @@ ParsedNode* parse_array(TokenSequence tokens, size_t start, size_t end) {
 
     next_child_start = child_end + 1;
   }
-
-  return result;
 }
 
-ParsedNode* parse_object(TokenSequence tokens, size_t start, size_t end) {
+ParsedNode* parse_object(TokenSequence tokens, size_t start, size_t end,
+                         size_t* process_end) {
   ParsedNode* result = new ParsedNode{
       .t = ParsedNodeType::OBJECT,
       .inner = ParsedNodeInner{
@@ -135,8 +129,10 @@ ParsedNode* parse_object(TokenSequence tokens, size_t start, size_t end) {
     ParsedNode* val_node = parse_tokens(tokens, key_end + 1, end, &val_end);
     result->inner.o.children.insert({str_key, val_node});
 
-    if (val_end == end) {
-      break;
+    if (SIMPLE_EQ(tokens[val_end], RCURLYB)) {
+      *process_end = val_end + 1;
+
+      return result;
     }
 
     // we expect a comma here to separate from the next key-val pair.
@@ -146,8 +142,6 @@ ParsedNode* parse_object(TokenSequence tokens, size_t start, size_t end) {
 
     next_pair_start = val_end + 1;
   }
-
-  return result;
 }
 
 ParsedNode* parse_tokens(TokenSequence tokens) {
@@ -181,15 +175,30 @@ ParsedNode* parse_tokens(TokenSequence tokens, size_t start, size_t end,
   }
 
   // Check for string
-  PROCESS_INSIDE(QUOTE, QUOTE, parse_string)
+  if ((first_token.t == TokenType ::Simple) &&
+      (first_token.inner.s == SimpleToken ::QUOTE)) {
+    ParsedNode* array_node = parse_string(tokens, start + 1, end, process_end);
+    return array_node;
+  }
 
   // Check for array
-  PROCESS_INSIDE(LSQUAREB, RSQUAREB, parse_array)
+  PROCESS_INSIDE(LSQUAREB, parse_array)
 
-  PROCESS_INSIDE(LCURLYB, RCURLYB, parse_object)
+  // Check for object
+  PROCESS_INSIDE(LCURLYB, parse_object)
 
   throw "Unexpected end of input";
 }
+
+/*
+  Deconstructors for the nodes.
+  =============================
+*/
+
+// I don't quite understand why this is necessary, but if I don't trivialize
+// the deconstructor for the ParsedStringNode, I get a bunch of errors about the
+// deconstructor being deleted. Deconstructing the string from the tagged union
+// seems to work better ?
 
 ParsedNode::~ParsedNode() {
   if (t == ParsedNodeType::STRING) {

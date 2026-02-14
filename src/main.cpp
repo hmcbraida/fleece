@@ -20,7 +20,8 @@ void simple_string_test() {
 }
 
 void simple_array_test() {
-  const char example[] = "[\"hello wor{ld\", \"another element\"]";
+  const char example[] =
+      "[\"hello wor{ld\", \"another element\", [\"subarray\"]]";
   // const char example[] = "{\"message\": \"hello world\"}";
 
   auto tokens = lex_bytes(example, sizeof(example) / sizeof(char));
@@ -36,9 +37,11 @@ void simple_array_test() {
 }
 
 void simple_object_test() {
-  const char example[] = "{\"hello\": \"world\", \"another\": \"pair\", \"this "
-                         "time\": [\"two\", \"things\"]}";
+  const char example[] =
+      "{\"hello\": \"world\", \"another\": \"pair\", \"this "
+      "time\": [\"two\", \"things\", {\"and\": \"this ;)\"}]}";
   // const char example[] = "{\"message\": \"hello world\"}";
+  printf("%s\n", example);
 
   auto tokens = lex_bytes(example, sizeof(example) / sizeof(char));
 
