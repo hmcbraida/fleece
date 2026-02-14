@@ -23,6 +23,22 @@
     throw "No matching " #token_id;                                            \
   }
 
+/*
+  Checks for a pair starting with initial, ending with final; parse inside.
+
+  The `parse_fn` is run on whatever tokens lie on the inside.
+*/
+#define PROCESS_INSIDE(initial, final, parse_fn)                               \
+  if (SIMPLE_EQ(first_token, initial)) {                                       \
+    SIMPLE_LOOKAHEAD(final_pos, final)                                         \
+    if (final_pos == 0) {                                                      \
+      throw "Missing " #final " to match " #initial;                           \
+    }                                                                          \
+    ParsedNode* array_node = parse_fn(tokens, start + 1, final_pos);           \
+    *process_end = final_pos + 1;                                              \
+    return array_node;                                                         \
+  }
+
 char simple_token_to_char(const SimpleToken& token) {
   using enum SimpleToken;
   switch (token) {
@@ -122,28 +138,10 @@ ParsedNode* parse_tokens(TokenSequence tokens, size_t start, size_t end,
   }
 
   // Check for string
-  if (SIMPLE_EQ(first_token, QUOTE)) {
-    // Look ahead for the next quotation mark
-    SIMPLE_LOOKAHEAD(next_quote, QUOTE)
+  PROCESS_INSIDE(QUOTE, QUOTE, parse_string)
 
-    // printf("%zu,%zu\n", start + 1, next_quote);
-
-    // start is the position of the first quote
-    // next_quote is the position of its pair
-    ParsedNode* string_node = parse_string(tokens, start + 1, next_quote);
-    *process_end = next_quote + 1;
-
-    return string_node;
-  }
-
-  if (SIMPLE_EQ(first_token, LSQUAREB)) {
-    SIMPLE_LOOKAHEAD(next_sqbrack, RSQUAREB)
-
-    ParsedNode* array_node = parse_array(tokens, start + 1, next_sqbrack);
-    *process_end = next_sqbrack + 1;
-
-    return array_node;
-  }
+  // Check for array
+  PROCESS_INSIDE(LSQUAREB, RSQUAREB, parse_array)
 
   throw "Unexpected end of input";
 }
