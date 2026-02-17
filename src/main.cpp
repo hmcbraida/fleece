@@ -1,30 +1,21 @@
 #include "debug.hpp"
-#include "lexer.hpp"
-#include "parser.hpp"
+#include "fleece.hpp"
 #include <cstdio>
 
-void json_test(const char* text) {
-  printf("Input text:\n%s\n", text);
-  auto tokens = lex_bytes(text);
-  printf("Result of lexing:\n");
-  print_lex_output(tokens);
-  ParsedNode* res = parse_tokens(tokens);
-  printf("Result of parsing:\n");
-  print_parsed_node(res);
-  printf("\n\n");
-  delete res;
+void test(const char* text) {
+  auto res = parse(text);
+
+  print_fleece_node(res);
+  printf("\n");
 }
 
 int main() {
   try {
-    json_test("\"hello { world }\"");
-    json_test("[\"hello wor{ld\", \"another element\", [\"subarray\"]]");
-    json_test("{\"hello\":\n \"world\",      \n \"another\": \"pair\", \"this time\": "
-              "[\"two\", \"things\", {\"and\": \"this ;)\"}]}");
-    json_test("[12, 34, 2432.23, 0.3, .532, \"hello\"]");
+    test("[ 45, 23 ,  \"STRING\"]");
+    test("\"hello world\"");
+    test("{\"hello\"      : 42, \"world\"     : 23}");
+    test("{\"hello\"      : 42, \"world\"  :  null}");
   } catch (char const* c) {
     printf("%s\n", c);
   }
-
-  return 0;
 }

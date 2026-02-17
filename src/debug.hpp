@@ -2,11 +2,8 @@
 
 #define FLEECE_DEBUG_H_
 
-#include "lexer.hpp"
-#include "parser.hpp"
-#include <vector>
+#include "fleece.hpp"
 
-void print_lex_output(std::vector<TokenNode>&);
-void print_parsed_node(const ParsedNode* node);
+void print_fleece_node(const FleeceNode* root);
 
 #endif
