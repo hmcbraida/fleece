@@ -241,10 +241,20 @@ FleeceNodeType FleeceNumberNode::type() const { return FleeceNodeType::Number; }
 // Object methods implementation
 
 FleeceNodeType FleeceObjectNode::type() const { return FleeceNodeType::Object; }
+FleeceObjectNode::~FleeceObjectNode() {
+  for (const auto& [key, child] : children) {
+    delete child;
+  }
+}
 
 // Array methods implementation
 
 FleeceNodeType FleeceArrayNode::type() const { return FleeceNodeType::Array; }
+FleeceArrayNode::~FleeceArrayNode() {
+  for (const auto& child : children) {
+    delete child;
+  }
+}
 
 // Null implementation
 

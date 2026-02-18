@@ -35,6 +35,7 @@ public:
 };
 
 class FleeceObjectNode : public FleeceNode {
+  ~FleeceObjectNode();
 public:
   std::unordered_map<std::string, FleeceNode*> children;
   FleeceObjectNode(std::unordered_map<std::string, FleeceNode*> children)
@@ -43,6 +44,7 @@ public:
 };
 
 class FleeceArrayNode : public FleeceNode {
+  ~FleeceArrayNode();
 public:
   std::vector<FleeceNode*> children;
   FleeceArrayNode(std::vector<FleeceNode*> children) : children(children) {}
